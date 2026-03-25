@@ -38,8 +38,11 @@ router.post('/', authenticateToken, async (req, res) => {
         const pages = Math.min(Math.max(parseInt(maxPages) || 10, 1), 50);
         const scanId = generateId();
 
-        // Create scan record
-        db.createScan(scanId, req.user.id, urlCheck.url, level, pages);
+        // Respond immediately, then process in background
+        res.status(202).json({ message: 'Scan queued successfully', scanId });
+
+        // Background process
+        await db.createScan(scanId, req.user.id, urlCheck.url, level, pages);
 
         // Start scan asynchronously
         runScan(scanId, urlCheck.url, { wcagLevel: level, maxPages: pages }, (progress) => {
@@ -64,14 +67,6 @@ router.post('/', authenticateToken, async (req, res) => {
         }).catch(err => {
             console.error(`Scan ${scanId} failed:`, err.message);
         });
-
-        res.status(202).json({
-            message: 'Scan started',
-            scanId,
-            url: urlCheck.url,
-            wcagLevel: level,
-            maxPages: pages
-        });
     } catch (err) {
         console.error('Scan start error:', err);
         res.status(500).json({ error: 'Failed to start scan' });
@@ -79,11 +74,11 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // SSE endpoint for scan progress
-router.get('/:id/progress', authenticateToken, (req, res) => {
+router.get('/:id/progress', authenticateToken, async (req, res) => {
     const scanId = req.params.id;
 
     // Verify scan belongs to user
-    const scan = db.getScanById(scanId);
+    const scan = await db.getScanById(scanId);
     if (!scan || scan.user_id !== req.user.id) {
         return res.status(404).json({ error: 'Scan not found' });
     }
@@ -123,9 +118,9 @@ router.get('/:id/progress', authenticateToken, (req, res) => {
 });
 
 // Get scan status
-router.get('/:id', authenticateToken, (req, res) => {
+router.get('/:id', authenticateToken, async (req, res) => {
     try {
-        const scan = db.getScanById(req.params.id);
+        const scan = await db.getScanById(req.params.id);
         if (!scan || scan.user_id !== req.user.id) {
             return res.status(404).json({ error: 'Scan not found' });
         }
@@ -137,9 +132,9 @@ router.get('/:id', authenticateToken, (req, res) => {
 });
 
 // Cancel scan
-router.delete('/:id', authenticateToken, (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
     try {
-        const scan = db.getScanById(req.params.id);
+        const scan = await db.getScanById(req.params.id);
         if (!scan || scan.user_id !== req.user.id) {
             return res.status(404).json({ error: 'Scan not found' });
         }
@@ -182,7 +177,7 @@ router.post('/batch', authenticateToken, async (req, res) => {
             } catch { continue; }
 
             const scanId = generateId();
-            db.createScan(scanId, req.user.id, urlCheck.url, level, pages);
+            await db.createScan(scanId, req.user.id, urlCheck.url, level, pages);
             scanIds.push({ scanId, url: urlCheck.url });
 
             // Start scan (no SSE for batch)

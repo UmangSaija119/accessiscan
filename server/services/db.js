@@ -1,180 +1,229 @@
-const Database = require('better-sqlite3');
-const path = require('path');
-const fs = require('fs');
-const config = require('../config');
+const mongoose = require('mongoose');
 
-let db = null;
+// ==========================================
+// Mongoose Schemas
+// ==========================================
 
-function getDb() {
-    if (db) return db;
+const UserSchema = new mongoose.Schema({
+    _id: { type: String, required: true }, // We use custom UUIDs
+    email: { type: String, required: true, unique: true },
+    password_hash: { type: String, required: true },
+    name: { type: String, default: '' },
+    role: { type: String, default: 'user' }, // New Admin feature
+}, { timestamps: { createdAt: 'created_at', updatedAt: 'updated_at' } });
 
-    const dbDir = path.dirname(path.resolve(config.dbPath));
-    if (!fs.existsSync(dbDir)) {
-        fs.mkdirSync(dbDir, { recursive: true });
+const ScanSchema = new mongoose.Schema({
+    _id: { type: String, required: true },
+    user_id: { type: String, ref: 'User', required: true, index: true },
+    url: { type: String, required: true },
+    status: { type: String, default: 'pending', index: true },
+    wcag_level: { type: String, default: 'wcag2aa' },
+    max_pages: { type: Number, default: 20 },
+    overall_score: { type: Number, default: 0 },
+    total_violations: { type: Number, default: 0 },
+    total_passes: { type: Number, default: 0 },
+    total_incomplete: { type: Number, default: 0 },
+    total_inapplicable: { type: Number, default: 0 },
+    pages_scanned: { type: Number, default: 0 },
+    pages_total: { type: Number, default: 0 },
+    started_at: { type: Date, default: Date.now },
+    completed_at: { type: Date },
+    error_message: { type: String },
+    config_json: { type: String, default: '{}' }
+});
+
+const ScanPageSchema = new mongoose.Schema({
+    _id: { type: String, required: true },
+    scan_id: { type: String, ref: 'Scan', required: true, index: true },
+    url: { type: String, required: true },
+    title: { type: String, default: '' },
+    score: { type: Number, default: 0 },
+    violations_count: { type: Number, default: 0 },
+    passes_count: { type: Number, default: 0 },
+    incomplete_count: { type: Number, default: 0 },
+    inapplicable_count: { type: Number, default: 0 },
+    screenshot_path: { type: String },
+    results_json: { type: String, default: '{}' },
+    scanned_at: { type: Date, default: Date.now }
+});
+
+const User = mongoose.model('User', UserSchema);
+const Scan = mongoose.model('Scan', ScanSchema);
+const ScanPage = mongoose.model('ScanPage', ScanPageSchema);
+
+// ==========================================
+// Connection Logic (Fallback to Memory if no URI)
+// ==========================================
+
+async function getDb() {
+    if (mongoose.connection.readyState === 1) return mongoose.connection;
+    const uri = process.env.MONGODB_URI;
+    if (!uri) {
+        console.warn('⚠️ No MONGODB_URI found. You must set this to a MongoDB Atlas URL to use AccessiScan.');
+        return null;
     }
 
-    db = new Database(path.resolve(config.dbPath));
-    db.pragma('journal_mode = WAL');
-    db.pragma('foreign_keys = ON');
-
-    initTables();
-    return db;
-}
-
-function initTables() {
-    db.exec(`
-    CREATE TABLE IF NOT EXISTS users (
-      id TEXT PRIMARY KEY,
-      email TEXT UNIQUE NOT NULL,
-      password_hash TEXT NOT NULL,
-      name TEXT DEFAULT '',
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now'))
-    );
-
-    CREATE TABLE IF NOT EXISTS scans (
-      id TEXT PRIMARY KEY,
-      user_id TEXT NOT NULL,
-      url TEXT NOT NULL,
-      status TEXT DEFAULT 'pending',
-      wcag_level TEXT DEFAULT 'wcag2aa',
-      max_pages INTEGER DEFAULT 20,
-      overall_score INTEGER DEFAULT 0,
-      total_violations INTEGER DEFAULT 0,
-      total_passes INTEGER DEFAULT 0,
-      total_incomplete INTEGER DEFAULT 0,
-      total_inapplicable INTEGER DEFAULT 0,
-      pages_scanned INTEGER DEFAULT 0,
-      pages_total INTEGER DEFAULT 0,
-      started_at TEXT DEFAULT (datetime('now')),
-      completed_at TEXT,
-      error_message TEXT,
-      config_json TEXT DEFAULT '{}',
-      FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-    );
-
-    CREATE TABLE IF NOT EXISTS scan_pages (
-      id TEXT PRIMARY KEY,
-      scan_id TEXT NOT NULL,
-      url TEXT NOT NULL,
-      title TEXT DEFAULT '',
-      score INTEGER DEFAULT 0,
-      violations_count INTEGER DEFAULT 0,
-      passes_count INTEGER DEFAULT 0,
-      incomplete_count INTEGER DEFAULT 0,
-      inapplicable_count INTEGER DEFAULT 0,
-      screenshot_path TEXT,
-      results_json TEXT DEFAULT '{}',
-      scanned_at TEXT DEFAULT (datetime('now')),
-      FOREIGN KEY (scan_id) REFERENCES scans(id) ON DELETE CASCADE
-    );
-
-    CREATE INDEX IF NOT EXISTS idx_scans_user_id ON scans(user_id);
-    CREATE INDEX IF NOT EXISTS idx_scans_status ON scans(status);
-    CREATE INDEX IF NOT EXISTS idx_scan_pages_scan_id ON scan_pages(scan_id);
-  `);
-}
-
-// User operations
-function createUser(id, email, passwordHash, name) {
-    const stmt = db.prepare('INSERT INTO users (id, email, password_hash, name) VALUES (?, ?, ?, ?)');
-    return stmt.run(id, email, passwordHash, name || '');
-}
-
-function getUserByEmail(email) {
-    return db.prepare('SELECT * FROM users WHERE email = ?').get(email);
-}
-
-function getUserById(id) {
-    return db.prepare('SELECT id, email, name, created_at FROM users WHERE id = ?').get(id);
-}
-
-// Scan operations
-function createScan(id, userId, url, wcagLevel, maxPages) {
-    const stmt = db.prepare(
-        'INSERT INTO scans (id, user_id, url, wcag_level, max_pages) VALUES (?, ?, ?, ?, ?)'
-    );
-    return stmt.run(id, userId, url, wcagLevel || 'wcag2aa', maxPages || 20);
-}
-
-function updateScanStatus(scanId, status, extra = {}) {
-    const sets = ['status = ?'];
-    const params = [status];
-
-    for (const [key, value] of Object.entries(extra)) {
-        const colName = key.replace(/([A-Z])/g, '_$1').toLowerCase();
-        sets.push(`${colName} = ?`);
-        params.push(value);
+    try {
+        await mongoose.connect(uri);
+        console.log('✅ Connected to MongoDB Atlas');
+        return mongoose.connection;
+    } catch (err) {
+        console.error('❌ Failed to connect to MongoDB', err);
+        throw err;
     }
-
-    params.push(scanId);
-    const stmt = db.prepare(`UPDATE scans SET ${sets.join(', ')} WHERE id = ?`);
-    return stmt.run(...params);
 }
 
-function getScanById(scanId) {
-    return db.prepare('SELECT * FROM scans WHERE id = ?').get(scanId);
+async function closeDb() {
+    await mongoose.connection.close();
 }
 
-function getUserScans(userId, limit = 50, offset = 0) {
-    return db.prepare(
-        'SELECT * FROM scans WHERE user_id = ? ORDER BY started_at DESC LIMIT ? OFFSET ?'
-    ).all(userId, limit, offset);
+/** 
+ * Map _id to id so legacy code keeps working.
+ * Mongoose returns objects with _id. This helper flattens to plain JSON and remaps _id.
+ */
+function mapDoc(doc) {
+    if (!doc) return null;
+    const obj = doc.toObject ? doc.toObject() : doc;
+    obj.id = obj._id;
+    delete obj._id;
+    delete obj.__v;
+    return obj;
 }
 
-function getUserScanCount(userId) {
-    return db.prepare('SELECT COUNT(*) as count FROM scans WHERE user_id = ?').get(userId).count;
+// ==========================================
+// User Operations
+// ==========================================
+
+async function createUser(id, email, passwordHash, name) {
+    const isFirstUser = (await User.countDocuments()) === 0;
+    const user = new User({
+        _id: id,
+        email,
+        password_hash: passwordHash,
+        name: name || '',
+        role: isFirstUser ? 'admin' : 'user' // First registered user is admin!
+    });
+    return mapDoc(await user.save());
 }
 
-function deleteScan(scanId, userId) {
-    return db.prepare('DELETE FROM scans WHERE id = ? AND user_id = ?').run(scanId, userId);
+async function getUserByEmail(email) {
+    return mapDoc(await User.findOne({ email }));
 }
 
-// Scan page operations
-function createScanPage(id, scanId, url, title, score, results) {
-    const stmt = db.prepare(`
-    INSERT INTO scan_pages (id, scan_id, url, title, score, violations_count, passes_count, 
-    incomplete_count, inapplicable_count, results_json) 
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-    return stmt.run(
-        id, scanId, url, title, score,
-        results.violations?.length || 0,
-        results.passes?.length || 0,
-        results.incomplete?.length || 0,
-        results.inapplicable?.length || 0,
-        JSON.stringify(results)
-    );
+async function getUserById(id) {
+    return mapDoc(await User.findOne({ _id: id }));
 }
 
-function getScanPages(scanId) {
-    return db.prepare('SELECT * FROM scan_pages WHERE scan_id = ? ORDER BY scanned_at').all(scanId);
+// ==========================================
+// Scan Operations
+// ==========================================
+
+async function createScan(id, userId, url, wcagLevel, maxPages) {
+    const scan = new Scan({
+        _id: id,
+        user_id: userId,
+        url,
+        wcag_level: wcagLevel || 'wcag2aa',
+        max_pages: maxPages || 20
+    });
+    return mapDoc(await scan.save());
 }
 
-// Dashboard stats
-function getDashboardStats(userId) {
-    const totalScans = db.prepare('SELECT COUNT(*) as count FROM scans WHERE user_id = ?').get(userId).count;
-    const completedScans = db.prepare("SELECT COUNT(*) as count FROM scans WHERE user_id = ? AND status = 'completed'").get(userId).count;
-    const avgScore = db.prepare("SELECT AVG(overall_score) as avg FROM scans WHERE user_id = ? AND status = 'completed'").get(userId).avg || 0;
-    const recentScans = db.prepare('SELECT * FROM scans WHERE user_id = ? ORDER BY started_at DESC LIMIT 5').all(userId);
-    const totalViolations = db.prepare("SELECT SUM(total_violations) as total FROM scans WHERE user_id = ? AND status = 'completed'").get(userId).total || 0;
+async function updateScanStatus(scanId, status, extra = {}) {
+    const update = { status, ...extra };
+    return mapDoc(await Scan.findOneAndUpdate({ _id: scanId }, { $set: update }, { new: true }));
+}
+
+async function getScanById(scanId) {
+    return mapDoc(await Scan.findOne({ _id: scanId }));
+}
+
+async function getUserScans(userId, limit = 50, offset = 0) {
+    const scans = await Scan.find({ user_id: userId })
+        .sort({ started_at: -1 })
+        .skip(offset)
+        .limit(limit);
+    return scans.map(mapDoc);
+}
+
+async function getUserScanCount(userId) {
+    return await Scan.countDocuments({ user_id: userId });
+}
+
+async function deleteScan(scanId, userId) {
+    await Scan.findOneAndDelete({ _id: scanId, user_id: userId });
+    await ScanPage.deleteMany({ scan_id: scanId });
+    return true;
+}
+
+// ==========================================
+// Scan Page Operations
+// ==========================================
+
+async function createScanPage(id, scanId, url, title, score, results) {
+    const page = new ScanPage({
+        _id: id,
+        scan_id: scanId,
+        url,
+        title,
+        score,
+        violations_count: results.violations?.length || 0,
+        passes_count: results.passes?.length || 0,
+        incomplete_count: results.incomplete?.length || 0,
+        inapplicable_count: results.inapplicable?.length || 0,
+        results_json: JSON.stringify(results)
+    });
+    return mapDoc(await page.save());
+}
+
+async function getScanPages(scanId) {
+    const pages = await ScanPage.find({ scan_id: scanId }).sort({ scanned_at: 1 });
+    return pages.map(mapDoc);
+}
+
+// ==========================================
+// Dashboard Stats Operations
+// ==========================================
+
+async function getDashboardStats(userId) {
+    const totalScans = await Scan.countDocuments({ user_id: userId });
+    const completedScans = await Scan.countDocuments({ user_id: userId, status: 'completed' });
+
+    // Aggregate average score and total violations
+    const aggregate = await Scan.aggregate([
+        { $match: { user_id: userId, status: 'completed' } },
+        {
+            $group: {
+                _id: null,
+                avgScore: { $avg: '$overall_score' },
+                totalViolations: { $sum: '$total_violations' }
+            }
+        }
+    ]);
+
+    const statsResult = aggregate[0] || { avgScore: 0, totalViolations: 0 };
+
+    const recentScansResult = await Scan.find({ user_id: userId })
+        .sort({ started_at: -1 })
+        .limit(5);
 
     return {
         totalScans,
         completedScans,
-        avgScore: Math.round(avgScore),
-        recentScans,
-        totalViolations
+        avgScore: Math.round(statsResult.avgScore),
+        recentScans: recentScansResult.map(mapDoc),
+        totalViolations: statsResult.totalViolations
     };
 }
 
-// Get actual severity breakdown from scan results (no estimates)
-function getSeverityBreakdown(userId) {
-    const latestScan = db.prepare("SELECT id FROM scans WHERE user_id = ? AND status = 'completed' ORDER BY started_at DESC LIMIT 1").get(userId);
-    if (!latestScan) return { critical: 0, serious: 0, moderate: 0, minor: 0, passes: 0 };
+async function getSeverityBreakdown(userId) {
+    const latestScan = await Scan.findOne({ user_id: userId, status: 'completed' })
+        .sort({ started_at: -1 });
 
-    const pages = db.prepare('SELECT results_json FROM scan_pages WHERE scan_id = ?').all(latestScan.id);
     const severity = { critical: 0, serious: 0, moderate: 0, minor: 0, passes: 0 };
+    if (!latestScan) return severity;
+
+    const pages = await ScanPage.find({ scan_id: latestScan._id });
 
     for (const page of pages) {
         try {
@@ -193,16 +242,25 @@ function getSeverityBreakdown(userId) {
     return severity;
 }
 
-function closeDb() {
-    if (db) {
-        db.close();
-        db = null;
-    }
+// Admin Operations (New)
+async function getAllUsers() {
+    const users = await User.find().sort({ created_at: -1 });
+    return users.map(u => {
+        const doc = mapDoc(u);
+        delete doc.password_hash; // Never send hash to admin
+        return doc;
+    });
+}
+
+function getModels() {
+    return { User, Scan, ScanPage };
 }
 
 module.exports = {
-    getDb, createUser, getUserByEmail, getUserById,
+    getDb, closeDb, getModels,
+    createUser, getUserByEmail, getUserById,
     createScan, updateScanStatus, getScanById, getUserScans, getUserScanCount, deleteScan,
     createScanPage, getScanPages,
-    getDashboardStats, getSeverityBreakdown, closeDb
+    getDashboardStats, getSeverityBreakdown,
+    getAllUsers // For Admin
 };

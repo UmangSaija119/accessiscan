@@ -9,12 +9,12 @@ const router = express.Router();
 // Get full report for a scan
 router.get('/:scanId', authenticateToken, async (req, res) => {
     try {
-        const scan = db.getScanById(req.params.scanId);
+        const scan = await db.getScanById(req.params.scanId);
         if (!scan || scan.user_id !== req.user.id) {
             return res.status(404).json({ error: 'Report not found' });
         }
 
-        const pages = db.getScanPages(req.params.scanId);
+        const pages = await db.getScanPages(req.params.scanId);
 
         // Parse page results
         const parsedPages = pages.map(page => ({
@@ -77,7 +77,7 @@ router.get('/:scanId', authenticateToken, async (req, res) => {
 // Download PDF report
 router.get('/:scanId/pdf', authenticateToken, async (req, res) => {
     try {
-        const scan = db.getScanById(req.params.scanId);
+        const scan = await db.getScanById(req.params.scanId);
         if (!scan || scan.user_id !== req.user.id) {
             return res.status(404).json({ error: 'Report not found' });
         }
@@ -86,7 +86,7 @@ router.get('/:scanId/pdf', authenticateToken, async (req, res) => {
             return res.status(400).json({ error: 'Scan is not yet completed' });
         }
 
-        const pages = db.getScanPages(req.params.scanId);
+        const pages = await db.getScanPages(req.params.scanId);
         const pdfBuffer = await generatePdfReport(scan, pages);
 
         const filename = `accessiscan-report-${new Date(scan.started_at).toISOString().split('T')[0]}.pdf`;
@@ -101,9 +101,9 @@ router.get('/:scanId/pdf', authenticateToken, async (req, res) => {
 });
 
 // Download CSV report
-router.get('/:scanId/csv', authenticateToken, (req, res) => {
+router.get('/:scanId/csv', authenticateToken, async (req, res) => {
     try {
-        const scan = db.getScanById(req.params.scanId);
+        const scan = await db.getScanById(req.params.scanId);
         if (!scan || scan.user_id !== req.user.id) {
             return res.status(404).json({ error: 'Report not found' });
         }
@@ -112,7 +112,7 @@ router.get('/:scanId/csv', authenticateToken, (req, res) => {
             return res.status(400).json({ error: 'Scan is not yet completed' });
         }
 
-        const pages = db.getScanPages(req.params.scanId);
+        const pages = await db.getScanPages(req.params.scanId);
         const csvContent = generateCsvReport(scan, pages);
 
         const filename = `accessiscan-report-${new Date(scan.started_at).toISOString().split('T')[0]}.csv`;
@@ -126,10 +126,10 @@ router.get('/:scanId/csv', authenticateToken, (req, res) => {
 });
 
 // Compare two scans
-router.get('/:scanId/compare/:otherId', authenticateToken, (req, res) => {
+router.get('/:scanId/compare/:otherId', authenticateToken, async (req, res) => {
     try {
-        const scan1 = db.getScanById(req.params.scanId);
-        const scan2 = db.getScanById(req.params.otherId);
+        const scan1 = await db.getScanById(req.params.scanId);
+        const scan2 = await db.getScanById(req.params.otherId);
 
         if (!scan1 || scan1.user_id !== req.user.id || !scan2 || scan2.user_id !== req.user.id) {
             return res.status(404).json({ error: 'One or both scans not found' });

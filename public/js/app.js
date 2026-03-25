@@ -17,6 +17,16 @@ function initApp() {
     if (user) {
         document.getElementById('user-name').textContent = user.name || 'User';
         document.getElementById('user-email').textContent = user.email || '';
+
+        // Dynamically inject Admin Panel link only for admins
+        if (user.role === 'admin') {
+            let adminLink = document.getElementById('nav-admin');
+            if (!adminLink) {
+                const navMenu = document.querySelector('.sidebar-nav');
+                const adminHtml = `<a href="#/admin" class="nav-item" id="nav-admin" data-page="admin"><i class="fas fa-shield-alt"></i><span>Admin Panel</span></a>`;
+                navMenu.insertAdjacentHTML('beforeend', adminHtml);
+            }
+        }
     }
 
     // Sidebar toggle (hamburger)
@@ -94,6 +104,7 @@ function handleRoute() {
             else window.location.hash = '#/history';
             break;
         case 'history': renderHistoryPage(); break;
+        case 'admin': renderAdminPage(); break;
         case 'settings': renderSettingsPage(); break;
         default: renderDashboardPage();
     }

@@ -26,7 +26,7 @@ router.post('/register', async (req, res) => {
         }
 
         // Check if email already exists
-        const existing = db.getUserByEmail(email.trim().toLowerCase());
+        const existing = await db.getUserByEmail(email.trim().toLowerCase());
         if (existing) {
             return res.status(409).json({ error: 'An account with this email already exists' });
         }
@@ -35,15 +35,14 @@ router.post('/register', async (req, res) => {
         const passwordHash = await bcrypt.hash(password, 12);
         const sanitizedName = sanitizeString(name || '');
 
-        db.createUser(id, email.trim().toLowerCase(), passwordHash, sanitizedName);
+        const newUser = await db.createUser(id, email.trim().toLowerCase(), passwordHash, sanitizedName);
 
-        const user = { id, email: email.trim().toLowerCase() };
-        const token = generateToken(user);
+        const token = generateToken({ id, email: email.trim().toLowerCase() });
 
         res.status(201).json({
             message: 'Account created successfully',
             token,
-            user: { id, email: user.email, name: sanitizedName }
+            user: { id, email: newUser.email, name: newUser.name, role: newUser.role }
         });
     } catch (err) {
         console.error('Register error:', err);
@@ -60,7 +59,7 @@ router.post('/login', async (req, res) => {
             return res.status(400).json({ error: 'Email and password are required' });
         }
 
-        const user = db.getUserByEmail(email.trim().toLowerCase());
+        const user = await db.getUserByEmail(email.trim().toLowerCase());
         if (!user) {
             return res.status(401).json({ error: 'Invalid email or password' });
         }
@@ -75,7 +74,7 @@ router.post('/login', async (req, res) => {
         res.json({
             message: 'Login successful',
             token,
-            user: { id: user.id, email: user.email, name: user.name }
+            user: { id: user.id, email: user.email, name: user.name, role: user.role }
         });
     } catch (err) {
         console.error('Login error:', err);
@@ -84,11 +83,11 @@ router.post('/login', async (req, res) => {
 });
 
 // Get current user
-router.get('/me', require('../middleware/auth').authenticateToken, (req, res) => {
+router.get('/me', require('../middleware/auth').authenticateToken, async (req, res) => {
     try {
-        const user = db.getUserById(req.user.id);
+        const user = await db.getUserById(req.user.id);
         if (!user) return res.status(404).json({ error: 'User not found' });
-        res.json({ user });
+        res.json({ user: { id: user.id, email: user.email, name: user.name, role: user.role } });
     } catch (err) {
         console.error('Get user error:', err);
         res.status(500).json({ error: 'Internal server error' });

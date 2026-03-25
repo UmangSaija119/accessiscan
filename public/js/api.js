@@ -160,6 +160,15 @@ const API = {
         return `${this.baseUrl}/reports/${scanId}/csv`;
     },
 
+    // Admin
+    async getAdminStats() {
+        return this.request('GET', '/admin/stats');
+    },
+
+    async getAdminUsers() {
+        return this.request('GET', '/admin/users');
+    },
+
     async downloadPdf(scanId) {
         try {
             const response = await fetch(`${this.baseUrl}/reports/${scanId}/pdf`, {
