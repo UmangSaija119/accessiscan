@@ -90,6 +90,69 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* ===== Global Animated Background Orbs ===== */
+.app-background {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.app-orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(100px);
+  opacity: 0.18;
+  animation: orbFloat 20s ease-in-out infinite;
+}
+
+.app-orb.auth-orb-1 {
+  width: 500px;
+  height: 500px;
+  background: #00c48c;
+  top: -120px;
+  left: -100px;
+  animation-delay: 0s;
+}
+
+.app-orb.auth-orb-2 {
+  width: 400px;
+  height: 400px;
+  background: #6c5ce7;
+  bottom: -80px;
+  right: -80px;
+  animation-delay: -7s;
+}
+
+.app-orb.auth-orb-3 {
+  width: 300px;
+  height: 300px;
+  background: #ff3366;
+  top: 40%;
+  left: 55%;
+  animation-delay: -14s;
+}
+
+@keyframes orbFloat {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+
+  33% {
+    transform: translate(30px, -40px) scale(1.05);
+  }
+
+  66% {
+    transform: translate(-20px, 25px) scale(0.95);
+  }
+}
+
 a {
   color: var(--brand-primary);
   text-decoration: none;
@@ -119,6 +182,8 @@ textarea {
 #app {
   display: flex;
   min-height: 100vh;
+  position: relative;
+  z-index: 1;
 }
 
 /* ===== Sidebar ===== */
@@ -128,12 +193,14 @@ textarea {
   left: 0;
   width: var(--sidebar-width);
   height: 100vh;
-  background: var(--bg-sidebar);
+  background: rgba(10, 15, 26, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-right: 1px solid var(--border-secondary);
   display: flex;
   flex-direction: column;
   z-index: 100;
-  transition: transform var(--transition-slow);
+  transition: width var(--transition-slow), transform var(--transition-slow);
 }
 
 .sidebar-header {
@@ -340,36 +407,35 @@ textarea {
 }
 
 .sidebar.collapsed .logo-text,
+.sidebar.collapsed .logo-image,
 .sidebar.collapsed .user-details,
 .sidebar.collapsed .nav-item span {
   opacity: 0;
   width: 0;
   padding: 0;
   pointer-events: none;
-  display: none;
+  overflow: hidden;
 }
 
 .sidebar.collapsed .sidebar-header {
   padding: 22px 14px;
   justify-content: center;
-}
-
-.sidebar.collapsed .logo {
-  gap: 0;
-}
-
-.sidebar.collapsed .sidebar-toggle {
-  display: none;
-  /* Hide toggle when collapsed, or keep it to expand? Better to keep it! */
-}
-
-.sidebar.collapsed .sidebar-header {
   flex-direction: column;
   gap: 16px;
 }
 
-.sidebar.collapsed .sidebar-toggle {
-  display: flex;
+.sidebar.collapsed .logo {
+  gap: 0;
+  justify-content: center;
+}
+
+.sidebar.collapsed .nav-item {
+  justify-content: center;
+  padding: 12px;
+}
+
+.sidebar.collapsed .nav-item i {
+  margin-right: 0;
 }
 
 .sidebar.collapsed .sidebar-footer {
@@ -395,7 +461,10 @@ textarea {
   margin-left: var(--sidebar-width);
   flex: 1;
   min-height: 100vh;
+  min-width: 0;
   transition: margin-left var(--transition-slow);
+  position: relative;
+  z-index: 1;
 }
 
 .page-content {
@@ -1687,14 +1756,16 @@ select.form-input {
 }
 
 /* ===== Tables Responsive ===== */
-.data-table {
-  display: block;
+.table-responsive {
+  width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
 }
 
-.data-table table {
+.data-table {
+  width: 100%;
   min-width: 700px;
+  border-collapse: collapse;
 }
 
 /* ===== Responsive ===== */

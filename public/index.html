@@ -13,12 +13,19 @@
     rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-  <link rel="stylesheet" href="/css/styles.css?v=3.2">
+  <link rel="stylesheet" href="/css/styles.css?v=4.0">
 </head>
 
 <body>
   <!-- Toast Container -->
   <div id="toast-container"></div>
+
+  <!-- Global Bulbs Background -->
+  <div class="app-background">
+    <div class="app-orb auth-orb-1"></div>
+    <div class="app-orb auth-orb-2"></div>
+    <div class="app-orb auth-orb-3"></div>
+  </div>
 
   <!-- App Shell -->
   <div id="app">
@@ -26,10 +33,8 @@
     <aside id="sidebar" class="sidebar">
       <div class="sidebar-header">
         <div class="logo">
-          <div class="logo-icon">
-            <i class="fas fa-universal-access"></i>
-          </div>
-          <span class="logo-text">AccessiScan<span class="brand-sub">by Astound Digital</span></span>
+          <img src="/logo.png" alt="Astound Digital" class="logo-image"
+            style="height: 32px; width: auto; max-width: 140px; margin-right: 10px;">
         </div>
         <button id="sidebar-toggle" class="sidebar-toggle" aria-label="Toggle sidebar">
           <i class="fas fa-bars"></i>
@@ -81,19 +86,11 @@
 
   <!-- Auth Container (shown when not logged in) -->
   <div id="auth-container" class="auth-container" style="display:none;">
-    <div class="auth-bg">
-      <div class="auth-orb auth-orb-1"></div>
-      <div class="auth-orb auth-orb-2"></div>
-      <div class="auth-orb auth-orb-3"></div>
-    </div>
     <div class="auth-card">
       <div class="auth-logo">
-        <div class="logo-icon large">
-          <i class="fas fa-universal-access"></i>
-        </div>
+        <img src="/logo.png" alt="Astound Digital" style="height: 50px; margin-bottom: 20px;">
         <h1>Accessi<span class="brand-highlight">Scan</span></h1>
         <p>AI-Powered Accessibility Testing</p>
-        <div class="brand-badge">by Astound Digital</div>
       </div>
 
       <div id="auth-form-container">
@@ -102,14 +99,14 @@
     </div>
   </div>
 
-  <script src="/js/api.js?v=3.2"></script>
-  <script src="/js/pages/login.js?v=3.2"></script>
-  <script src="/js/pages/dashboard.js?v=3.2"></script>
-  <script src="/js/pages/scan.js?v=3.2"></script>
-  <script src="/js/pages/report.js?v=3.2"></script>
-  <script src="/js/pages/history.js?v=3.2"></script>
-  <script src="/js/pages/settings.js?v=3.2"></script>
-  <script src="/js/app.js?v=3.2"></script>
+  <script src="/js/api.js?v=4.0"></script>
+  <script src="/js/pages/login.js?v=4.0"></script>
+  <script src="/js/pages/dashboard.js?v=4.0"></script>
+  <script src="/js/pages/scan.js?v=4.0"></script>
+  <script src="/js/pages/report.js?v=4.0"></script>
+  <script src="/js/pages/history.js?v=4.0"></script>
+  <script src="/js/pages/settings.js?v=4.0"></script>
+  <script src="/js/app.js?v=4.0"></script>
 </body>
 
 </html>

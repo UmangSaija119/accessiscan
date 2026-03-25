@@ -5,8 +5,8 @@
 let historyPage = 1;
 
 async function renderHistoryPage() {
-    const content = document.getElementById('page-content');
-    content.innerHTML = `
+  const content = document.getElementById('page-content');
+  content.innerHTML = `
     <div class="page-header flex justify-between items-center">
       <div>
         <h1>Scan History</h1>
@@ -29,7 +29,7 @@ async function renderHistoryPage() {
         </div>
       </div>
 
-      <div id="history-table-container">
+      <div id="history-table-container" class="table-responsive">
         <div class="skeleton skeleton-rect"></div>
       </div>
 
@@ -45,62 +45,78 @@ async function renderHistoryPage() {
     </div>
   `;
 
-    historyPage = 1;
-    await loadHistory();
+  historyPage = 1;
+  await loadHistory();
 
-    document.getElementById('history-status-filter').addEventListener('change', () => {
-        historyPage = 1;
-        loadHistory();
-    });
+  document.getElementById('history-status-filter').addEventListener('change', () => {
+    historyPage = 1;
+    loadHistory();
+  });
+
+  // Event delegation for table actions
+  document.getElementById('history-table-container').addEventListener('click', async (e) => {
+    const downloadBtn = e.target.closest('.download-pdf-btn');
+    if (downloadBtn) {
+      e.preventDefault();
+      const scanId = downloadBtn.dataset.id;
+      const icon = downloadBtn.querySelector('i');
+      icon.className = 'fas fa-spinner fa-spin'; // Show loading state
+      try {
+        await API.downloadPdf(scanId);
+      } finally {
+        icon.className = 'fas fa-download'; // Restore icon
+      }
+    }
+  });
 }
 
 async function loadHistory() {
-    try {
-        const data = await API.getHistory(historyPage, 20);
-        const statusFilter = document.getElementById('history-status-filter')?.value || 'all';
+  try {
+    const data = await API.getHistory(historyPage, 20);
+    const statusFilter = document.getElementById('history-status-filter')?.value || 'all';
 
-        let scans = data.scans || [];
-        if (statusFilter !== 'all') {
-            scans = scans.filter(s => s.status === statusFilter);
-        }
-
-        document.getElementById('history-count').textContent = `${data.pagination.total} Total Scans`;
-        renderHistoryTable(scans);
-
-        // Pagination
-        const pagination = document.getElementById('history-pagination');
-        if (data.pagination.totalPages > 1) {
-            pagination.style.display = 'flex';
-            document.getElementById('page-info').textContent = `Page ${data.pagination.page} of ${data.pagination.totalPages}`;
-
-            const prevBtn = document.getElementById('prev-page');
-            const nextBtn = document.getElementById('next-page');
-            prevBtn.disabled = data.pagination.page <= 1;
-            nextBtn.disabled = data.pagination.page >= data.pagination.totalPages;
-
-            prevBtn.onclick = () => { historyPage--; loadHistory(); };
-            nextBtn.onclick = () => { historyPage++; loadHistory(); };
-        }
-    } catch (err) {
-        showToast('Failed to load history', 'error');
+    let scans = data.scans || [];
+    if (statusFilter !== 'all') {
+      scans = scans.filter(s => s.status === statusFilter);
     }
+
+    document.getElementById('history-count').textContent = `${data.pagination.total} Total Scans`;
+    renderHistoryTable(scans);
+
+    // Pagination
+    const pagination = document.getElementById('history-pagination');
+    if (data.pagination.totalPages > 1) {
+      pagination.style.display = 'flex';
+      document.getElementById('page-info').textContent = `Page ${data.pagination.page} of ${data.pagination.totalPages}`;
+
+      const prevBtn = document.getElementById('prev-page');
+      const nextBtn = document.getElementById('next-page');
+      prevBtn.disabled = data.pagination.page <= 1;
+      nextBtn.disabled = data.pagination.page >= data.pagination.totalPages;
+
+      prevBtn.onclick = () => { historyPage--; loadHistory(); };
+      nextBtn.onclick = () => { historyPage++; loadHistory(); };
+    }
+  } catch (err) {
+    showToast('Failed to load history', 'error');
+  }
 }
 
 function renderHistoryTable(scans) {
-    const container = document.getElementById('history-table-container');
+  const container = document.getElementById('history-table-container');
 
-    if (!scans || scans.length === 0) {
-        container.innerHTML = `
+  if (!scans || scans.length === 0) {
+    container.innerHTML = `
       <div class="empty-state">
         <i class="fas fa-clock-rotate-left"></i>
         <h3>No scans found</h3>
         <p>Start a scan to see your history here.</p>
       </div>
     `;
-        return;
-    }
+    return;
+  }
 
-    container.innerHTML = `
+  container.innerHTML = `
     <table class="data-table">
       <thead>
         <tr>
@@ -133,7 +149,7 @@ function renderHistoryTable(scans) {
                   <a href="#/report/${scan.id}" class="btn btn-secondary btn-sm" title="View Report">
                     <i class="fas fa-file-lines"></i>
                   </a>
-                  <button class="btn btn-secondary btn-sm" title="Download PDF" onclick="API.downloadPdf('${scan.id}')">
+                  <button class="btn btn-secondary btn-sm download-pdf-btn" data-id="${scan.id}" title="Download PDF">
                     <i class="fas fa-download"></i>
                   </button>
                 ` : ''}
