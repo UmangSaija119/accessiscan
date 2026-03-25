@@ -142,6 +142,7 @@ textarea {
   justify-content: space-between;
   padding: 22px 18px;
   border-bottom: 1px solid var(--border-secondary);
+  overflow: hidden;
 }
 
 .logo {
@@ -177,6 +178,8 @@ textarea {
   font-weight: 700;
   color: #fff;
   letter-spacing: -0.3px;
+  transition: opacity var(--transition-fast), width var(--transition-fast);
+  white-space: nowrap;
 }
 
 .logo-text .brand-sub {
@@ -256,6 +259,11 @@ textarea {
   border-radius: 0 3px 3px 0;
 }
 
+.nav-item span {
+  white-space: nowrap;
+  transition: opacity var(--transition-fast);
+}
+
 .sidebar-footer {
   padding: 16px 18px;
   border-top: 1px solid var(--border-secondary);
@@ -324,6 +332,62 @@ textarea {
 .logout-btn:hover {
   background: rgba(239, 68, 68, 0.12);
   color: var(--critical);
+}
+
+/* ===== Collapsed Sidebar State (Desktop) ===== */
+.sidebar.collapsed {
+  width: 80px;
+}
+
+.sidebar.collapsed .logo-text,
+.sidebar.collapsed .user-details,
+.sidebar.collapsed .nav-item span {
+  opacity: 0;
+  width: 0;
+  padding: 0;
+  pointer-events: none;
+  display: none;
+}
+
+.sidebar.collapsed .sidebar-header {
+  padding: 22px 14px;
+  justify-content: center;
+}
+
+.sidebar.collapsed .logo {
+  gap: 0;
+}
+
+.sidebar.collapsed .sidebar-toggle {
+  display: none;
+  /* Hide toggle when collapsed, or keep it to expand? Better to keep it! */
+}
+
+.sidebar.collapsed .sidebar-header {
+  flex-direction: column;
+  gap: 16px;
+}
+
+.sidebar.collapsed .sidebar-toggle {
+  display: flex;
+}
+
+.sidebar.collapsed .sidebar-footer {
+  flex-direction: column;
+  padding: 16px 0;
+  align-items: center;
+}
+
+.sidebar.collapsed .user-info {
+  justify-content: center;
+}
+
+.sidebar.collapsed .user-avatar {
+  margin-bottom: 10px;
+}
+
+.sidebar.collapsed+.main-content {
+  margin-left: 80px;
 }
 
 /* ===== Main Content ===== */

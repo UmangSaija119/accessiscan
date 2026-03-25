@@ -40,8 +40,11 @@ function initApp() {
         mobileBtn.id = 'mobile-toggle';
         mobileBtn.className = 'mobile-toggle';
         mobileBtn.innerHTML = '<i class="fas fa-bars"></i>';
-        mobileBtn.addEventListener('click', toggleSidebar);
-        document.querySelector('.main-content').prepend(mobileBtn);
+        mobileBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleSidebar();
+        });
+        document.body.appendChild(mobileBtn);
     }
 
     // Logout
@@ -98,7 +101,11 @@ function handleRoute() {
 
 function toggleSidebar() {
     const sidebar = document.getElementById('sidebar');
-    sidebar.classList.toggle('open');
+    if (window.innerWidth <= 768) {
+        sidebar.classList.toggle('open');
+    } else {
+        sidebar.classList.toggle('collapsed');
+    }
 }
 
 function handleResize() {
