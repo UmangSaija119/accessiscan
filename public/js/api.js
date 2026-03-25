@@ -41,14 +41,14 @@ const API = {
 
         const response = await fetch(`${this.baseUrl}${endpoint}`, options);
 
-        if (response.status === 401) {
+        if (response.status === 401 && endpoint !== '/auth/login') {
             const data = await response.json().catch(() => ({}));
             if (data.code === 'TOKEN_EXPIRED') {
                 this.logout();
-                return;
+                throw new Error('Session expired. Please log in again.');
             }
             this.logout();
-            return;
+            throw new Error('Unauthorized');
         }
 
         if (!response.ok) {

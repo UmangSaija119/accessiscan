@@ -68,8 +68,7 @@ async function getDb() {
         console.log('✅ Connected to MongoDB Atlas');
         return mongoose.connection;
     } catch (err) {
-        console.error('❌ Failed to connect to MongoDB', err);
-        throw err;
+        console.error('❌ Failed to connect to MongoDB Atlas. Please ensure you whitelisted IP 0.0.0.0/0 in your Network Access settings.', err.message);
     }
 }
 

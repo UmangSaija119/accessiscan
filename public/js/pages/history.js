@@ -48,26 +48,32 @@ async function renderHistoryPage() {
   historyPage = 1;
   await loadHistory();
 
-  document.getElementById('history-status-filter').addEventListener('change', () => {
-    historyPage = 1;
-    loadHistory();
-  });
+  const statusFilter = document.getElementById('history-status-filter');
+  if (statusFilter) {
+    statusFilter.addEventListener('change', () => {
+      historyPage = 1;
+      loadHistory();
+    });
+  }
 
   // Event delegation for table actions
-  document.getElementById('history-table-container').addEventListener('click', async (e) => {
-    const downloadBtn = e.target.closest('.download-pdf-btn');
-    if (downloadBtn) {
-      e.preventDefault();
-      const scanId = downloadBtn.dataset.id;
-      const icon = downloadBtn.querySelector('i');
-      icon.className = 'fas fa-spinner fa-spin'; // Show loading state
-      try {
-        await API.downloadPdf(scanId);
-      } finally {
-        icon.className = 'fas fa-download'; // Restore icon
+  const tableContainer = document.getElementById('history-table-container');
+  if (tableContainer) {
+    tableContainer.addEventListener('click', async (e) => {
+      const downloadBtn = e.target.closest('.download-pdf-btn');
+      if (downloadBtn) {
+        e.preventDefault();
+        const scanId = downloadBtn.dataset.id;
+        const icon = downloadBtn.querySelector('i');
+        icon.className = 'fas fa-spinner fa-spin'; // Show loading state
+        try {
+          await API.downloadPdf(scanId);
+        } finally {
+          icon.className = 'fas fa-download'; // Restore icon
+        }
       }
-    }
-  });
+    });
+  }
 }
 
 async function loadHistory() {
@@ -138,7 +144,10 @@ function renderHistoryTable(scans) {
             <td>${scan.status === 'completed' ? `<span class="badge badge-critical">${scan.total_violations || 0}</span>` : '—'}</td>
             <td>${scan.pages_scanned || 0}</td>
             <td><span class="badge badge-info">${(scan.wcag_level || '').toUpperCase()}</span></td>
-            <td>${statusBadge(scan.status)}</td>
+            <td>
+              ${statusBadge(scan.status)}
+              ${scan.status === 'failed' && scan.error_message ? `<div style="font-size:11px; color:#ff4d4d; margin-top:4px; max-width: 150px;" title="${scan.error_message}">${scan.error_message}</div>` : ''}
+            </td>
             <td style="white-space:nowrap;">
               <div>${formatDate(scan.started_at)}</div>
               <div style="font-size:11px;color:var(--text-tertiary);">${formatTime(scan.started_at)}</div>
