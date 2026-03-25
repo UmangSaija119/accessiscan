@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AccessiScan</title>
+    <link rel="stylesheet" href="popup.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+</head>
+
+<body>
+    <div class="popup-container">
+        <!-- Header -->
+        <div class="popup-header">
+            <div class="popup-logo">
+                <img src="../icons/icon48.png" alt="AccessiScan" class="popup-logo-icon">
+                <div class="popup-logo-text">
+                    <span class="popup-title">AccessiScan</span>
+                    <span class="popup-brand">by Astound Digital</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="popup-status" id="status-bar">
+            <div class="status-indicator" id="status-indicator">
+                <span class="status-dot idle"></span>
+                <span id="status-text">Ready to scan</span>
+            </div>
+        </div>
+
+        <!-- Controls -->
+        <div class="popup-controls">
+            <div class="control-group">
+                <label for="wcag-select">WCAG Level</label>
+                <select id="wcag-select">
+                    <option value="wcag2a">WCAG 2.0 A</option>
+                    <option value="wcag2aa" selected>WCAG 2.0 AA</option>
+                    <option value="wcag2aaa">WCAG 2.0 AAA</option>
+                    <option value="wcag21aa">WCAG 2.1 AA</option>
+                    <option value="wcag22aa">WCAG 2.2 AA</option>
+                </select>
+            </div>
+
+            <button class="scan-btn" id="scan-btn">
+                <i class="fas fa-radar"></i> Run Accessibility Scan
+            </button>
+        </div>
+
+        <!-- Results -->
+        <div class="popup-results" id="results-section" style="display:none;">
+            <!-- Score -->
+            <div class="score-section" id="score-section"></div>
+
+            <!-- Stats -->
+            <div class="stats-row" id="stats-row"></div>
+
+            <!-- Violations List -->
+            <div class="violations-header" id="violations-header">
+                <span>Violations</span>
+                <span class="violations-count" id="violations-count">0</span>
+            </div>
+            <div class="violations-list" id="violations-list"></div>
+
+            <!-- Actions -->
+            <div class="popup-actions">
+                <button class="action-btn" id="toggle-overlay-btn">
+                    <i class="fas fa-eye"></i> Toggle Overlay
+                </button>
+                <button class="action-btn" id="copy-report-btn">
+                    <i class="fas fa-copy"></i> Copy Report
+                </button>
+            </div>
+        </div>
+
+        <!-- Scanning State -->
+        <div class="popup-scanning" id="scanning-section" style="display:none;">
+            <div class="scanning-spinner"></div>
+            <p>Scanning page for accessibility issues...</p>
+            <p class="scanning-sub">Running axe-core analysis</p>
+        </div>
+
+        <!-- Footer -->
+        <div class="popup-footer">
+            Powered by <strong>Astound Digital</strong> · axe-core engine
+        </div>
+    </div>
+
+    <script src="../lib/axe.min.js"></script>
+    <script src="popup.js"></script>
+</body>
+
+</html>
