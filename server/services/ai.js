@@ -17,6 +17,9 @@ async function callGemini(prompt, maxTokens = 2048) {
     }
 
     try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 12000); // 12s timeout
+
         const response = await fetch(
             `${GEMINI_API_URL}/${config.geminiModel}:generateContent?key=${config.geminiApiKey}`,
             {
@@ -28,9 +31,12 @@ async function callGemini(prompt, maxTokens = 2048) {
                         maxOutputTokens: maxTokens,
                         temperature: 0.3
                     }
-                })
+                }),
+                signal: controller.signal
             }
         );
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) {
             console.error('Gemini API error:', response.status);
@@ -40,7 +46,11 @@ async function callGemini(prompt, maxTokens = 2048) {
         const data = await response.json();
         return data?.candidates?.[0]?.content?.parts?.[0]?.text || null;
     } catch (err) {
-        console.error('Gemini API call failed:', err.message);
+        if (err.name === 'AbortError') {
+            console.error('Gemini API timed out after 12 seconds');
+        } else {
+            console.error('Gemini API call failed:', err.message);
+        }
         return null;
     }
 }
