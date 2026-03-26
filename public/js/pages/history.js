@@ -12,7 +12,10 @@ async function renderHistoryPage() {
         <h1>Scan History</h1>
         <p>View and manage all your accessibility scans</p>
       </div>
-      <a href="#/scan" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> New Scan</a>
+      <div>
+        <button id="clear-all-history-btn" class="btn btn-secondary btn-sm" style="margin-right: 10px; color: #ef4444; border-color: #fca5a5; background: transparent;"><i class="fas fa-trash-can"></i> Clear All</button>
+        <a href="#/scan" class="btn btn-primary btn-sm"><i class="fas fa-plus"></i> New Scan</a>
+      </div>
     </div>
 
     <div class="card">
@@ -56,6 +59,22 @@ async function renderHistoryPage() {
     });
   }
 
+  const clearBtn = document.getElementById('clear-all-history-btn');
+  if (clearBtn) {
+    clearBtn.addEventListener('click', async () => {
+      if (confirm('Are you strictly sure you want to permanently delete all your scan history? This action cannot be undone.')) {
+        try {
+          await API.clearHistory();
+          showToast('All scan history permanently deleted.', 'success');
+          historyPage = 1;
+          loadHistory();
+        } catch (err) {
+          showToast('Failed to clear history', 'error');
+        }
+      }
+    });
+  }
+
   // Event delegation for table actions
   const tableContainer = document.getElementById('history-table-container');
   if (tableContainer) {
@@ -65,11 +84,16 @@ async function renderHistoryPage() {
         e.preventDefault();
         const scanId = downloadBtn.dataset.id;
         const icon = downloadBtn.querySelector('i');
+        const originalClassName = icon.className;
         icon.className = 'fas fa-spinner fa-spin'; // Show loading state
+        downloadBtn.disabled = true;
+        downloadBtn.style.opacity = '0.5';
         try {
           await API.downloadPdf(scanId);
         } finally {
-          icon.className = 'fas fa-download'; // Restore icon
+          icon.className = originalClassName; // Restore exact original icon
+          downloadBtn.disabled = false;
+          downloadBtn.style.opacity = '1';
         }
       }
     });

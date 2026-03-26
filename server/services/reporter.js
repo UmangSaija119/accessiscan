@@ -7,9 +7,17 @@ const path = require('path');
 async function generatePdfReport(scan, pages) {
     let browser;
     try {
+        // Launch headless browser with minimal memory footprint for cloud environments
         browser = await puppeteer.launch({
-            headless: 'new',
-            args: ['--no-sandbox', '--disable-setuid-sandbox']
+            headless: true,
+            args: [
+                '--no-sandbox',
+                '--disable-setuid-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-gpu',
+                '--disable-web-security',
+                '--disable-features=VizDisplayCompositor'
+            ]
         });
         const page = await browser.newPage();
 
@@ -237,7 +245,7 @@ async function generatePdfReport(scan, pages) {
         </body>
         </html>`;
 
-        await page.setContent(html, { waitUntil: 'networkidle0' });
+        await page.setContent(html, { waitUntil: 'load' });
 
         const pdfBuffer = await page.pdf({
             format: 'A4',

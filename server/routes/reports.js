@@ -93,7 +93,8 @@ router.get('/:scanId/pdf', authenticateToken, async (req, res) => {
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
         res.setHeader('Content-Length', pdfBuffer.length);
-        res.send(pdfBuffer);
+
+        return res.send(Buffer.from(pdfBuffer));
     } catch (err) {
         console.error('PDF generation error:', err);
         res.status(500).json({ error: 'Failed to generate PDF report' });

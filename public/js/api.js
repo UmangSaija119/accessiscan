@@ -178,7 +178,14 @@ const API = {
                 const err = await response.json().catch(() => ({ error: 'Download failed' }));
                 throw new Error(err.error || 'Download failed');
             }
-            const blob = await response.blob();
+
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('text/html')) {
+                throw new Error('Cloud Server is currently waking up... Please wait 30 seconds and click Download again.');
+            }
+
+            const pdfBytes = await response.arrayBuffer();
+            const blob = new Blob([pdfBytes], { type: 'application/pdf' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -186,8 +193,12 @@ const API = {
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            showToast('PDF downloaded!', 'success');
+
+            // Critical fix: Delay garbage collection by 60 seconds to ensure Chrome 
+            // disk I/O safely flushes the buffer on slow/CPU-bound Windows computers.
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+
+            showToast('Report downloaded!', 'success');
         } catch (err) {
             showToast('PDF download failed: ' + err.message, 'error');
             throw err;
@@ -203,7 +214,14 @@ const API = {
                 const err = await response.json().catch(() => ({ error: 'Download failed' }));
                 throw new Error(err.error || 'Download failed');
             }
-            const blob = await response.blob();
+
+            const contentType = response.headers.get('content-type');
+            if (contentType && contentType.includes('text/html')) {
+                throw new Error('Cloud Server is currently waking up... Please wait 30 seconds and click Download again.');
+            }
+
+            const csvBytes = await response.arrayBuffer();
+            const blob = new Blob([csvBytes], { type: 'text/csv' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -211,7 +229,10 @@ const API = {
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            URL.revokeObjectURL(url);
+
+            // Critical fix: 60-second grace period for disk I/O
+            setTimeout(() => URL.revokeObjectURL(url), 60000);
+
             showToast('CSV downloaded!', 'success');
         } catch (err) {
             showToast('CSV download failed: ' + err.message, 'error');
@@ -234,6 +255,10 @@ const API = {
 
     async getHistory(page = 1, limit = 20) {
         return this.request('GET', `/dashboard/history?page=${page}&limit=${limit}`);
+    },
+
+    async clearHistory() {
+        return this.request('DELETE', '/dashboard/history/clear');
     }
 };
 

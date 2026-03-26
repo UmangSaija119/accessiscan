@@ -169,11 +169,34 @@ function renderFullReport(data, scanId) {
   renderPageIssues(0, 'violations', 'all');
 
   // PDF/CSV buttons
-  document.getElementById('btn-pdf').addEventListener('click', function () {
-    API.downloadPdf(scanId);
+  document.getElementById('btn-pdf').addEventListener('click', async function () {
+    const btn = this;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+    btn.disabled = true;
+    btn.style.opacity = '0.7';
+    try {
+      await API.downloadPdf(scanId);
+    } finally {
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    }
   });
-  document.getElementById('btn-csv').addEventListener('click', function () {
-    API.downloadCsv(scanId);
+
+  document.getElementById('btn-csv').addEventListener('click', async function () {
+    const btn = this;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Fetching...';
+    btn.disabled = true;
+    btn.style.opacity = '0.7';
+    try {
+      await API.downloadCsv(scanId);
+    } finally {
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    }
   });
 
   // Main tabs

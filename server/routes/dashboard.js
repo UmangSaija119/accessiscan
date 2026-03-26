@@ -52,4 +52,15 @@ router.get('/history', authenticateToken, async (req, res) => {
     }
 });
 
+// Clear all history
+router.delete('/history/clear', authenticateToken, async (req, res) => {
+    try {
+        await db.clearUserHistory(req.user.id);
+        res.json({ success: true, message: 'Scan history cleared successfully' });
+    } catch (err) {
+        console.error('Clear history error:', err);
+        res.status(500).json({ error: 'Failed to clear history' });
+    }
+});
+
 module.exports = router;

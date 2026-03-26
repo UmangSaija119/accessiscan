@@ -251,6 +251,17 @@ async function getAllUsers() {
     });
 }
 
+// User History Operations
+async function clearUserHistory(userId) {
+    const scans = await Scan.find({ user_id: userId });
+    // First sweep all nested page-level documents tied to these scans
+    for (const rootScan of scans) {
+        await ScanPage.deleteMany({ scan_id: rootScan._id });
+    }
+    // Then wipe the parent scan documents
+    await Scan.deleteMany({ user_id: userId });
+}
+
 function getModels() {
     return { User, Scan, ScanPage };
 }
@@ -258,7 +269,7 @@ function getModels() {
 module.exports = {
     getDb, closeDb, getModels,
     createUser, getUserByEmail, getUserById,
-    createScan, updateScanStatus, getScanById, getUserScans, getUserScanCount, deleteScan,
+    createScan, updateScanStatus, getScanById, getUserScans, getUserScanCount, deleteScan, clearUserHistory,
     createScanPage, getScanPages,
     getDashboardStats, getSeverityBreakdown,
     getAllUsers // For Admin
