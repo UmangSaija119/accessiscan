@@ -12,7 +12,8 @@ const activeScans = new Map();
 async function runScan(scanId, url, options = {}, onProgress = null) {
     const {
         wcagLevel = config.defaultWcagLevel,
-        maxPages = config.maxPages
+        maxPages = config.maxPages,
+        authConfig = null
     } = options;
 
     const axeSource = require('axe-core').source;
@@ -21,30 +22,30 @@ async function runScan(scanId, url, options = {}, onProgress = null) {
     try {
         // Update scan status
         db.updateScanStatus(scanId, 'crawling');
-        emitProgress(onProgress, { phase: 'crawling', message: 'Discovering pages...' });
+        emitProgress(onProgress, { phase: 'crawling', message: '🚀 Initializing headless browser engine...' });
 
         // Discover pages
         let pages;
         try {
-            pages = await discoverPages(url, maxPages);
+            emitProgress(onProgress, { phase: 'crawling', message: '🕷️ Crawling site structure...' });
+            pages = await discoverPages(url, maxPages, authConfig);
         } catch {
-            pages = [url]; // Fallback to just the provided URL
+            pages = [url];
         }
 
-        db.updateScanStatus(scanId, 'scanning', {
-            pages_total: pages.length
-        });
+        db.updateScanStatus(scanId, 'scanning', { pages_total: pages.length });
 
         emitProgress(onProgress, {
             phase: 'scanning',
-            message: `Found ${pages.length} page(s). Starting scan...`,
+            message: `✅ Found ${pages.length} page(s). Starting accessibility scan...`,
             pagesTotal: pages.length,
             pagesScanned: 0
         });
 
         // Launch browser
+        emitProgress(onProgress, { phase: 'scanning', message: '🌐 Launching Chrome accessibility engine...' });
         browser = await puppeteer.launch({
-            headless: 'new',
+            headless: true,
             args: [
                 '--no-sandbox',
                 '--disable-setuid-sandbox',
@@ -55,8 +56,22 @@ async function runScan(scanId, url, options = {}, onProgress = null) {
             ]
         });
 
-        // Store browser ref for cancellation
         activeScans.set(scanId, { browser, cancelled: false });
+
+        // Perform authentication if requested
+        if (authConfig && authConfig.loginUrl) {
+            emitProgress(onProgress, { phase: 'scanning', message: '🔐 Authenticating into protected site...' });
+            const authPage = await browser.newPage();
+            await authPage.goto(authConfig.loginUrl, { waitUntil: 'networkidle0', timeout: 30000 });
+            await authPage.type(authConfig.userSelector || '#email', authConfig.username);
+            await authPage.type(authConfig.passSelector || '#password', authConfig.password);
+            await Promise.all([
+                authPage.waitForNavigation({ waitUntil: 'networkidle0', timeout: 30000 }),
+                authPage.click('button[type="submit"], input[type="submit"]')
+            ]);
+            emitProgress(onProgress, { phase: 'scanning', message: '✅ Login successful! Beginning accessibility scan...' });
+            await authPage.close();
+        }
 
         let totalViolations = 0;
         let totalPasses = 0;
@@ -81,6 +96,15 @@ async function runScan(scanId, url, options = {}, onProgress = null) {
             }
 
             try {
+                const shortUrl = pageUrl.replace(/https?:\/\//, '');
+                emitProgress(onProgress, {
+                    phase: 'scanning',
+                    message: `🔍 Scanning: ${shortUrl}`,
+                    pagesTotal: pages.length,
+                    pagesScanned,
+                    currentPage: pageUrl
+                });
+
                 const result = await scanPage(browser, pageUrl, axeSource, wcagLevel, scanId, screenshotDir);
 
                 // Save page result to DB
@@ -105,12 +129,12 @@ async function runScan(scanId, url, options = {}, onProgress = null) {
 
                 emitProgress(onProgress, {
                     phase: 'scanning',
-                    message: `Scanned: ${pageUrl}`,
+                    message: `✅ Done: ${pageUrl.replace(/https?:\/\//, '')} — ${result.violations.length} violations (score: ${result.score})`,
                     pagesTotal: pages.length,
                     pagesScanned,
                     currentPage: pageUrl,
                     pageScore: result.score,
-                    violations: result.violations.length
+                    violations: totalViolations
                 });
 
             } catch (err) {

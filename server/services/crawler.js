@@ -1,7 +1,7 @@
 const { URL } = require('url');
 const { validateUrlSafe } = require('../utils/ssrf-guard');
 
-async function discoverPages(baseUrl, maxPages = 20) {
+async function discoverPages(baseUrl, maxPages = 20, authConfig = null) {
     const puppeteer = require('puppeteer');
     const discovered = new Set();
     const baseUrlObj = new URL(baseUrl);

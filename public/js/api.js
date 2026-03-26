@@ -86,8 +86,8 @@ const API = {
     },
 
     // Scans
-    async startScan(url, wcagLevel, maxPages) {
-        return this.request('POST', '/scan', { url, wcagLevel, maxPages });
+    async startScan(url, wcagLevel, maxPages, authConfig = null) {
+        return this.request('POST', '/scan', { url, wcagLevel, maxPages, authConfig });
     },
 
     async getScan(scanId) {

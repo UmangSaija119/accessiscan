@@ -14,7 +14,7 @@ const sseClients = new Map();
 // Start a new scan
 router.post('/', authenticateToken, async (req, res) => {
     try {
-        const { url, wcagLevel, maxPages } = req.body;
+        const { url, wcagLevel, maxPages, authConfig } = req.body;
 
         // Validate URL
         const urlCheck = validateUrl(url);
@@ -45,7 +45,7 @@ router.post('/', authenticateToken, async (req, res) => {
         await db.createScan(scanId, req.user.id, urlCheck.url, level, pages);
 
         // Start scan asynchronously
-        runScan(scanId, urlCheck.url, { wcagLevel: level, maxPages: pages }, (progress) => {
+        runScan(scanId, urlCheck.url, { wcagLevel: level, maxPages: pages, authConfig: authConfig || null }, (progress) => {
             // Emit to SSE clients
             const clients = sseClients.get(scanId);
             if (clients) {
