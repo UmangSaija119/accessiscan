@@ -6,6 +6,9 @@ const db = require('./services/db');
 
 const app = express();
 
+// Trust reverse proxies (Render load balancer)
+app.set('trust proxy', 1);
+
 // Initialize database
 db.getDb();
 
