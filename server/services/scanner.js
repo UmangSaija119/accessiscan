@@ -129,7 +129,7 @@ async function runScan(scanId, url, options = {}, onProgress = null) {
         const overallScore = calculateScore(totalViolations, totalPasses);
 
         // Finalize
-        db.updateScanStatus(scanId, 'completed', {
+        await db.updateScanStatus(scanId, 'completed', {
             overall_score: overallScore,
             total_violations: totalViolations,
             total_passes: totalPasses,
@@ -194,13 +194,22 @@ async function scanPage(browser, url, axeSource, wcagLevel, scanId, screenshotDi
         await page.evaluate(axeSource);
 
         const axeConfig = buildAxeConfig(wcagLevel);
-        const results = await page.evaluate((cfg) => {
+
+        // Wrap axe execution in a strict 45-second timeout.
+        // Axe-core can infinitely hang on massive nested shadow DOMs or iframes.
+        const axePromise = page.evaluate((cfg) => {
             return new Promise((resolve, reject) => {
                 window.axe.run(document, cfg)
                     .then(resolve)
                     .catch(reject);
             });
         }, axeConfig);
+
+        const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error("WCAG Engine execution timed out after 45 seconds")), 45000)
+        );
+
+        const results = await Promise.race([axePromise, timeoutPromise]);
 
         const score = calculateScore(results.violations.length, results.passes.length);
 
