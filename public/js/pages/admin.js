@@ -3,8 +3,8 @@
 // ===================================================
 
 async function renderAdminPage() {
-    const container = document.getElementById('page-content');
-    container.innerHTML = `
+  const container = document.getElementById('page-content');
+  container.innerHTML = `
     <div class="page-header">
       <div>
         <h1>Admin Control Panel</h1>
@@ -78,36 +78,42 @@ async function renderAdminPage() {
     </div>
   `;
 
-    try {
-        const stats = await API.getAdminStats();
-        document.getElementById('admin-total-users').textContent = stats.totalUsers;
-        document.getElementById('admin-total-scans').textContent = stats.totalScans;
-        document.getElementById('admin-completed-scans').textContent = stats.completedScans;
+  try {
+    const stats = await API.getAdminStats();
+    document.getElementById('admin-total-users').textContent = stats.totalUsers;
+    document.getElementById('admin-total-scans').textContent = stats.totalScans;
+    document.getElementById('admin-completed-scans').textContent = stats.completedScans;
 
-        const scoreVal = document.getElementById('admin-avg-score');
-        scoreVal.textContent = stats.globalAvgScore;
-        scoreVal.style.color = getScoreColor(stats.globalAvgScore);
+    const scoreVal = document.getElementById('admin-avg-score');
+    scoreVal.textContent = stats.globalAvgScore;
+    scoreVal.style.color = getScoreColor(stats.globalAvgScore);
 
-        const usersData = await API.getAdminUsers();
-        renderUsersTable(usersData.users);
+    const usersData = await API.getAdminUsers();
+    renderUsersTable(usersData.users);
 
-    } catch (err) {
-        showToast('Failed to load admin data: ' + err.message, 'error');
-        if (err.message.includes('Access denied')) {
-            navigate('dashboard');
-        }
+  } catch (err) {
+    showToast('Failed to load admin data: ' + err.message, 'error');
+    if (err.message.includes('Access denied')) {
+      navigate('dashboard');
     }
+  }
+}
+
+function getScoreColor(score) {
+  if (score >= 90) return 'var(--pass)';
+  if (score >= 70) return 'var(--warning)';
+  return 'var(--critical)';
 }
 
 function renderUsersTable(users) {
-    const tbody = document.getElementById('admin-users-list');
+  const tbody = document.getElementById('admin-users-list');
 
-    if (!users || users.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No users found.</td></tr>';
-        return;
-    }
+  if (!users || users.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="5" class="empty-state">No users found.</td></tr>';
+    return;
+  }
 
-    tbody.innerHTML = users.map(u => `
+  tbody.innerHTML = users.map(u => `
       <tr>
         <td>
           <div style="font-weight: 600; color: var(--text-primary);">${escapeHtml(u.name || 'Unnamed')}</div>
