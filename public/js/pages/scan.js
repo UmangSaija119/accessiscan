@@ -130,10 +130,6 @@ function renderScanPage() {
   `;
 
   // Event listeners
-  document.getElementById('scan-pages').addEventListener('input', (e) => {
-    document.getElementById('pages-value').textContent = e.target.value;
-  });
-
   document.getElementById('auth-enable').addEventListener('change', (e) => {
     document.getElementById('auth-config-panel').style.display = e.target.checked ? 'block' : 'none';
   });
