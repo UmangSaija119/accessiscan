@@ -44,6 +44,8 @@ const ScanPageSchema = new mongoose.Schema({
     inapplicable_count: { type: Number, default: 0 },
     screenshot_path: { type: String },
     results_json: { type: String, default: '{}' },
+    a11y_tree: { type: String, default: null },
+    tab_order: { type: String, default: null },
     scanned_at: { type: Date, default: Date.now }
 });
 
@@ -159,18 +161,24 @@ async function deleteScan(scanId, userId) {
 // Scan Page Operations
 // ==========================================
 
-async function createScanPage(id, scanId, url, title, score, results) {
+async function createScanPage(id, scanId, url, title, score, results, a11yTree, tabOrder) {
+    const safeResults = { ...results };
+    delete safeResults.a11yTree;
+    delete safeResults.tabOrder;
+
     const page = new ScanPage({
         _id: id,
         scan_id: scanId,
         url,
         title,
         score,
-        violations_count: results.violations?.length || 0,
-        passes_count: results.passes?.length || 0,
-        incomplete_count: results.incomplete?.length || 0,
-        inapplicable_count: results.inapplicable?.length || 0,
-        results_json: JSON.stringify(results)
+        violations_count: safeResults.violations?.length || 0,
+        passes_count: safeResults.passes?.length || 0,
+        incomplete_count: safeResults.incomplete?.length || 0,
+        inapplicable_count: safeResults.inapplicable?.length || 0,
+        results_json: JSON.stringify(safeResults),
+        a11y_tree: a11yTree || null,
+        tab_order: tabOrder || null
     });
     return mapDoc(await page.save());
 }

@@ -148,6 +148,9 @@ function renderFullReport(data, scanId) {
             <option value="violations">Violations</option>
             <option value="passes">Passes</option>
             <option value="incomplete">Incomplete</option>
+            <option value="inapplicable">Inapplicable</option>
+            <option value="a11ytree">📚 Virtual Screen Reader Transcript</option>
+            <option value="taborder">⌨️ Keyboard Navigation Flow</option>
           </select>
         </div>
 
@@ -338,46 +341,130 @@ function renderPageIssues(pageIdx, type, severityFilter) {
   severityFilter = severityFilter || 'all';
   var container = document.getElementById('report-issues-list');
   var page = window._reportPages[pageIdx];
-  if (!page || !page.results) {
+  if (!page) {
     container.innerHTML = '<div class="empty-state"><p>No results for this page</p></div>';
     return;
   }
 
-  var items = page.results[type] || [];
-  if (severityFilter !== 'all' && type === 'violations') {
-    items = items.filter(function (item) { return item.impact === severityFilter; });
-  }
+  // ==========================================
+  // [NEW] Virtual Screen Reader Transcript
+  // ==========================================
+  if (type === 'a11ytree') {
+    if (!page.a11y_tree) {
+      container.innerHTML = '<div class="empty-state"><i class="fas fa-tree" style="font-size:32px; color:var(--text-tertiary); margin-bottom:12px;"></i><p>Virtual Screen Reader Transcript not available for this scan.</p></div>';
+      return;
+    }
+    try {
+      var tree = typeof page.a11y_tree === 'string' ? JSON.parse(page.a11y_tree) : page.a11y_tree;
 
-  if (items.length === 0) {
-    container.innerHTML = '<div class="empty-state" style="padding:40px;"><i class="fas fa-' + (type === 'passes' ? 'check-circle' : 'search') + '"></i><h3>No ' + type + ' found</h3><p>' + (type === 'violations' ? 'Great! No violations at this severity level.' : '') + '</p></div>';
+      function renderA11yNode(node, depth = 0) {
+        if (!node) return '';
+        var padding = depth * 20;
+        var role = node.role ? `<span style="color:var(--brand-secondary); font-weight:700;">[${node.role}]</span>` : '';
+        var name = node.name ? `<span style="color:var(--pass);">"${node.name}"</span>` : `<span style="color:var(--text-tertiary); font-style:italic;">[nameless]</span>`;
+        var state = node.value ? ` <span style="color:var(--warning);">value="${node.value}"</span>` : '';
+        var html = `<div style="padding-left:${padding}px; border-left:1px solid var(--border-secondary); margin-left:4px; padding-top:4px; padding-bottom:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            ${role} ${name}${state}
+        </div>`;
+        if (node.children && node.children.length > 0) {
+          html += node.children.map(c => renderA11yNode(c, depth + 1)).join('');
+        }
+        return html;
+      }
+
+      container.innerHTML = `
+        <div style="background:var(--bg-secondary); padding:16px; border-radius:8px; margin-bottom:16px; border:1px solid var(--border-color);">
+          <h3 style="margin:0 0 8px 0; color:var(--brand-primary);"><i class="fas fa-headphones"></i> Active Accessibility Tree</h3>
+          <p style="font-size:12px; color:var(--text-secondary); margin:0;">This is exactly what NVDA and VoiceOver "hear" when reading the page. If text or buttons aren't visible here, they are functionally invisible to blind users.</p>
+        </div>
+        <div class="card" style="font-family:monospace; font-size:12px; font-weight:500; background:var(--bg-primary); padding:20px; border-radius:8px; border:1px solid var(--border-secondary); overflow-x:auto;">
+          ${renderA11yNode(tree)}
+        </div>
+      `;
+    } catch (e) {
+      container.innerHTML = '<div class="empty-state"><p>Error parsing Screen Reader Transcript.</p></div>';
+    }
     return;
   }
 
-  container.innerHTML = items.map(function (item) {
-    return '<div class="violation-item">' +
-      '<div class="violation-header">' +
-      '<div class="violation-title">' + escapeHtml(item.help || item.description || '') + '</div>' +
-      (item.impact ? severityBadge(item.impact) : '<span class="badge badge-pass"><i class="fas fa-check"></i> Pass</span>') +
-      '</div>' +
-      '<div class="violation-description">' + escapeHtml(item.description || '') + '</div>' +
-      (item.nodes || []).slice(0, 5).map(function (node) {
-        return (node.html ? '<div class="violation-code">' + escapeHtml(node.html) + '</div>' : '') +
-          (node.failureSummary ? '<div class="violation-fix"><strong>How to fix:</strong> ' + escapeHtml(node.failureSummary) + '</div>' : '');
-      }).join('') +
-      '<div class="violation-meta">' +
-      '<span class="violation-tag">' + (item.id || '') + '</span>' +
-      (item.tags || []).filter(function (t) { return t.startsWith('wcag'); }).slice(0, 3).map(function (tag) {
-        return '<span class="violation-tag">' + tag + '</span>';
-      }).join('') +
-      (item.helpUrl ? '<a href="' + item.helpUrl + '" target="_blank" rel="noopener" style="font-size:12px;"><i class="fas fa-external-link-alt"></i> Learn more</a>' : '') +
-      '</div>' +
-      '</div>';
-  }).join('');
-}
+  // ==========================================
+  // [NEW] Keyboard Navigation Flow & Traps
+  // ==========================================
+  if (type === 'taborder') {
+    if (!page.tab_order) {
+      container.innerHTML = '<div class="empty-state"><i class="fas fa-keyboard" style="font-size:32px; color:var(--text-tertiary); margin-bottom:12px;"></i><p>Keyboard Navigation Flow not available for this scan.</p></div>';
+      return;
+    }
+    try {
+      var flow = typeof page.tab_order === 'string' ? JSON.parse(page.tab_order) : page.tab_order;
+      if (!flow || flow.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>No keyboard-focusable elements detected.</p></div>';
+        return;
+      }
+      container.innerHTML = `
+        <div style="background:var(--bg-secondary); padding:16px; border-radius:8px; margin-bottom:16px; border:1px solid var(--border-color);">
+          <h3 style="margin:0 0 8px 0; color:var(--brand-primary);"><i class="fas fa-route"></i> Synthetic Tab Traversal</h3>
+          <p style="font-size:12px; color:var(--text-secondary); margin:0;">Chronological map of focus order. A <span style="color:white; background:var(--critical); padding:2px 4px; border-radius:2px;">KEYBOARD TRAP</span> occurs when the robot cannot escape a component after 3 consecutive Tabs.</p>
+        </div>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          ${flow.map((node, i) => {
+        var trapTag = node.isTrap ? '<span style="background:var(--critical); color:white; padding:2px 6px; border-radius:4px; font-size:10px; margin-left:8px;"><i class="fas fa-lock"></i> KEYBOARD TRAP DETECTED</span>' : '';
+        var style = node.isTrap ? 'border-left: 3px solid var(--critical); background:rgba(239,68,68,0.05);' : 'border-left: 3px solid var(--accent-blue); background:var(--bg-secondary);';
+        return \`<div class="card" style="padding:12px; \${style} margin-bottom:0px;">
+              <div style="font-size:11px; color:var(--text-tertiary); margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;">
+                <div><i class="fas fa-arrow-down" style="font-size:10px; opacity:0.5; margin-right:4px;"></i> Tab Event \${i+1} \${trapTag}</div>
+                \${node.href ? \`<span style="color:var(--brand-primary);"><i class="fas fa-link"></i> \${escapeHtml(node.href)}</span>\` : ''}
+              </div>
+              <div style="font-weight:600; color:var(--text-primary); margin-bottom:6px;"><span style="color:var(--brand-secondary);">&lt;\${node.tag}&gt;</span> \${escapeHtml(node.text) || '<em>[No accessible text]</em>'}</div>
+              <div style="font-family:monospace; font-size:10px; color:var(--text-secondary); background:var(--bg-primary); padding:6px; border-radius:4px; border:1px solid var(--border-color); overflow-x:auto;">\${escapeHtml(node.html)}</div>
+            </div>\`;
+          }).join('')}
+        </div>
+      `;
+      } catch (e) {
+        container.innerHTML = '<div class="empty-state"><p>Error parsing Keyboard Flow.</p></div>';
+      }
+      return;
+    }
 
-function escapeHtml(str) {
-  if (!str) return '';
-  var div = document.createElement('div');
-  div.textContent = str;
-  return div.innerHTML;
-}
+  // ==========================================
+  // Standard Axe-Core Results Fallback
+  // ==========================================
+  var items = page.results ? (page.results[type] || []) : [];
+    if (severityFilter !== 'all' && type === 'violations') {
+      items = items.filter(function (item) { return item.impact === severityFilter; });
+    }
+
+    if (items.length === 0) {
+      container.innerHTML = '<div class="empty-state" style="padding:40px;"><i class="fas fa-' + (type === 'passes' ? 'check-circle' : 'search') + '"></i><h3>No ' + type + ' found</h3><p>' + (type === 'violations' ? 'Great! No violations at this severity level.' : '') + '</p></div>';
+      return;
+    }
+
+    container.innerHTML = items.map(function (item) {
+      return '<div class="violation-item">' +
+        '<div class="violation-header">' +
+        '<div class="violation-title">' + escapeHtml(item.help || item.description || '') + '</div>' +
+        (item.impact ? severityBadge(item.impact) : '<span class="badge badge-pass"><i class="fas fa-check"></i> Pass</span>') +
+        '</div>' +
+        '<div class="violation-description">' + escapeHtml(item.description || '') + '</div>' +
+        (item.nodes || []).slice(0, 5).map(function (node) {
+          return (node.html ? '<div class="violation-code">' + escapeHtml(node.html) + '</div>' : '') +
+            (node.failureSummary ? '<div class="violation-fix"><strong>How to fix:</strong> ' + escapeHtml(node.failureSummary) + '</div>' : '');
+        }).join('') +
+        '<div class="violation-meta">' +
+        '<span class="violation-tag">' + (item.id || '') + '</span>' +
+        (item.tags || []).filter(function (t) { return t.startsWith('wcag'); }).slice(0, 3).map(function (tag) {
+          return '<span class="violation-tag">' + tag + '</span>';
+        }).join('') +
+        (item.helpUrl ? '<a href="' + item.helpUrl + '" target="_blank" rel="noopener" style="font-size:12px;"><i class="fas fa-external-link-alt"></i> Learn more</a>' : '') +
+        '</div>' +
+        '</div>';
+    }).join('');
+  }
+
+  function escapeHtml(str) {
+    if (!str) return '';
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+  }

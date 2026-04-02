@@ -23,12 +23,12 @@ function renderScanPage() {
           <div class="card-title">Scan Configuration</div>
         </div>
 
-        <form id="scan-form">
+        <form id="scan-form" autocomplete="off">
           <div class="form-group">
             <label for="scan-url">Website URL</label>
             <div class="form-input-icon">
               <i class="fas fa-globe"></i>
-              <input type="url" id="scan-url" class="form-input" placeholder="https://example.com" required>
+              <input type="url" id="scan-url" class="form-input" placeholder="https://example.com" required autocomplete="off" spellcheck="false">
             </div>
           </div>
 
@@ -42,6 +42,19 @@ function renderScanPage() {
               <option value="wcag21aaa">WCAG 2.1 Level AAA</option>
               <option value="wcag22aa">WCAG 2.2 Level AA</option>
             </select>
+          </div>
+
+          <div class="form-group">
+            <label for="scan-pages">Maximum Pages to Scan</label>
+            <input type="number" id="scan-pages" class="form-input" value="10" min="1" max="50">
+          </div>
+
+          <div class="form-group mb-4">
+            <label style="display:flex; align-items:center; cursor:pointer;">
+              <input type="checkbox" id="deep-scan-enable" style="margin-right:10px;" checked>
+              <span style="font-weight:600; color:var(--accent-blue)">Deep Scan (Single Page)</span>
+            </label>
+            <p style="font-size:11px; color:var(--text-tertiary); margin-left:26px; margin-top:4px;">Focus 100% on the provided URL with 3x more thorough keyboard simulation.</p>
           </div>
 
           <div class="form-group mt-4" style="border-top: 1px solid var(--border-secondary); padding-top: 16px;">
@@ -149,6 +162,7 @@ async function handleStartScan(e) {
   const url = document.getElementById('scan-url').value.trim();
   const wcagLevel = document.getElementById('scan-wcag').value;
   const maxPages = parseInt(document.getElementById('scan-pages').value);
+  const deepScan = document.getElementById('deep-scan-enable').checked;
 
   if (!url) {
     showToast('Please enter a URL', 'warning');
@@ -174,7 +188,7 @@ async function handleStartScan(e) {
   btn.innerHTML = '<div class="spinner"></div> Starting scan...';
 
   try {
-    const data = await API.startScan(url, wcagLevel, maxPages, authConfig);
+    const data = await API.startScan(url, wcagLevel, maxPages, authConfig, deepScan);
     showToast('Scan started!', 'success');
     showScanProgress(data.scanId);
   } catch (err) {
@@ -324,9 +338,9 @@ function updateProgress(scanId, data) {
     // Add view report button
     const btnRow = document.createElement('div');
     btnRow.className = 'mt-6';
-    btnRow.innerHTML = `<a href="#/report/${scanId}" class="btn btn-primary btn-lg">
+    btnRow.innerHTML = `<button class="btn btn-primary btn-lg btn-full" onclick="window.location.hash = '#/report/${scanId}'">
       <i class="fas fa-file-lines"></i> View Full Report
-    </a>`;
+    </button>`;
     panel.appendChild(btnRow);
 
     if (activeScanSubscription) {

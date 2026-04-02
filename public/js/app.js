@@ -95,6 +95,9 @@ function handleRoute() {
         sidebar.classList.remove('open');
     }
 
+    // Scroll to top
+    window.scrollTo(0, 0);
+
     // Route to page
     switch (page) {
         case 'dashboard': renderDashboardPage(); break;

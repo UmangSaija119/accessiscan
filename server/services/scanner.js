@@ -24,13 +24,26 @@ async function runScan(scanId, url, options = {}, onProgress = null) {
         db.updateScanStatus(scanId, 'crawling');
         emitProgress(onProgress, { phase: 'crawling', message: '🚀 Initializing headless browser engine...' });
 
-        // Discover pages
+        // 1. Discover pages (respecting Deep Scan preference)
         let pages;
-        try {
-            emitProgress(onProgress, { phase: 'crawling', message: '🕷️ Crawling site structure...' });
-            pages = await discoverPages(url, maxPages, authConfig);
-        } catch {
+        const isDeepScan = options.deepScan === true;
+
+        if (isDeepScan) {
             pages = [url];
+            emitProgress(onProgress, { phase: 'crawling', message: `🔍 Deep Scan Mode: Focusing exclusively on ${url}...` });
+        } else {
+            try {
+                emitProgress(onProgress, { phase: 'crawling', message: '🕷️ Crawling site structure...' });
+                pages = await discoverPages(url, maxPages, authConfig);
+                // Ensure target URL is ALWAYS first if found
+                const targetIdx = pages.indexOf(url);
+                if (targetIdx > 0) {
+                    pages.splice(targetIdx, 1);
+                    pages.unshift(url);
+                }
+            } catch {
+                pages = [url];
+            }
         }
 
         db.updateScanStatus(scanId, 'scanning', { pages_total: pages.length });
@@ -109,7 +122,7 @@ async function runScan(scanId, url, options = {}, onProgress = null) {
 
                 // Save page result to DB
                 db.createScanPage(
-                    generateId(), scanId, pageUrl, result.title, result.score, result
+                    generateId(), scanId, pageUrl, result.title, result.score, result, result.a11yTree, result.tabOrder
                 );
 
                 totalViolations += result.violations.length;
@@ -220,12 +233,9 @@ async function scanPage(browser, url, axeSource, wcagLevel, scanId, screenshotDi
         const axeConfig = buildAxeConfig(wcagLevel);
 
         // Wrap axe execution in a strict 45-second timeout.
-        // Axe-core can infinitely hang on massive nested shadow DOMs or iframes.
         const axePromise = page.evaluate((cfg) => {
             return new Promise((resolve, reject) => {
-                window.axe.run(document, cfg)
-                    .then(resolve)
-                    .catch(reject);
+                window.axe.run(document, cfg).then(resolve).catch(reject);
             });
         }, axeConfig);
 
@@ -234,6 +244,49 @@ async function scanPage(browser, url, axeSource, wcagLevel, scanId, screenshotDi
         );
 
         const results = await Promise.race([axePromise, timeoutPromise]);
+
+        // 1. Accessibility Tree Snapshot (Virtual Screen Reader)
+        let a11yTreeJson = null;
+        try {
+            const a11yTree = await page.accessibility.snapshot();
+            a11yTreeJson = JSON.stringify(a11yTree);
+        } catch { /* capture failure non-critical */ }
+
+        // 2. Synthetic Tab Traversal (Keyboard Trap Detection)
+        let tabOrderJson = null;
+        try {
+            await page.bringToFront();
+            const focusOrder = [];
+            const maxTabs = 250;
+            for (let i = 0; i < maxTabs; i++) {
+                await page.keyboard.press('Tab');
+                // Small delay to allow focus styles to trigger
+                await new Promise(r => setTimeout(r, 40));
+                const focusedEl = await page.evaluate(() => {
+                    const el = document.activeElement;
+                    if (!el || el === document.body) return null;
+                    return {
+                        tag: el.tagName.toLowerCase(),
+                        text: (el.innerText || el.getAttribute('aria-label') || el.value || '').slice(0, 50).trim(),
+                        id: el.id,
+                        href: el.href ? el.href.slice(0, 50) : null,
+                        html: el.outerHTML.slice(0, 100)
+                    };
+                });
+
+                if (focusedEl) {
+                    focusOrder.push(focusedEl);
+                    if (focusOrder.length >= 3) {
+                        const last3 = focusOrder.slice(-3);
+                        if (last3[0].html === last3[1].html && last3[1].html === last3[2].html) {
+                            focusOrder[focusOrder.length - 1].isTrap = true;
+                            break; // Break physical keyboard trap
+                        }
+                    }
+                }
+            }
+            tabOrderJson = JSON.stringify(focusOrder);
+        } catch { /* capture failure non-critical */ }
 
         const score = calculateScore(results.violations.length, results.passes.length);
 
@@ -246,6 +299,8 @@ async function scanPage(browser, url, axeSource, wcagLevel, scanId, screenshotDi
             passes: results.passes.map(simplifyResult),
             incomplete: results.incomplete.map(simplifyResult),
             inapplicable: results.inapplicable.map(simplifyResult),
+            a11yTree: a11yTreeJson,
+            tabOrder: tabOrderJson,
             timestamp: new Date().toISOString()
         };
 

@@ -62,7 +62,9 @@ router.get('/:scanId', authenticateToken, async (req, res) => {
                 violationsCount: p.violations_count,
                 passesCount: p.passes_count,
                 incompleteCount: p.incomplete_count,
-                results: p.results
+                results: p.results,
+                a11y_tree: p.a11y_tree,
+                tab_order: p.tab_order
             })),
             summary,
             executiveSummary,
