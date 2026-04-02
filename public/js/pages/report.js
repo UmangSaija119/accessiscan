@@ -410,61 +410,61 @@ function renderPageIssues(pageIdx, type, severityFilter) {
           ${flow.map((node, i) => {
         var trapTag = node.isTrap ? '<span style="background:var(--critical); color:white; padding:2px 6px; border-radius:4px; font-size:10px; margin-left:8px;"><i class="fas fa-lock"></i> KEYBOARD TRAP DETECTED</span>' : '';
         var style = node.isTrap ? 'border-left: 3px solid var(--critical); background:rgba(239,68,68,0.05);' : 'border-left: 3px solid var(--accent-blue); background:var(--bg-secondary);';
-        return \`<div class="card" style="padding:12px; \${style} margin-bottom:0px;">
+        return `<div class="card" style="padding:12px; ${style} margin-bottom:0px;">
               <div style="font-size:11px; color:var(--text-tertiary); margin-bottom:4px; display:flex; justify-content:space-between; align-items:center;">
-                <div><i class="fas fa-arrow-down" style="font-size:10px; opacity:0.5; margin-right:4px;"></i> Tab Event \${i+1} \${trapTag}</div>
-                \${node.href ? \`<span style="color:var(--brand-primary);"><i class="fas fa-link"></i> \${escapeHtml(node.href)}</span>\` : ''}
+                <div><i class="fas fa-arrow-down" style="font-size:10px; opacity:0.5; margin-right:4px;"></i> Tab Event ${i + 1} ${trapTag}</div>
+                ${node.href ? `<span style="color:var(--brand-primary);"><i class="fas fa-link"></i> ${escapeHtml(node.href)}</span>` : ''}
               </div>
-              <div style="font-weight:600; color:var(--text-primary); margin-bottom:6px;"><span style="color:var(--brand-secondary);">&lt;\${node.tag}&gt;</span> \${escapeHtml(node.text) || '<em>[No accessible text]</em>'}</div>
-              <div style="font-family:monospace; font-size:10px; color:var(--text-secondary); background:var(--bg-primary); padding:6px; border-radius:4px; border:1px solid var(--border-color); overflow-x:auto;">\${escapeHtml(node.html)}</div>
-            </div>\`;
-          }).join('')}
+              <div style="font-weight:600; color:var(--text-primary); margin-bottom:6px;"><span style="color:var(--brand-secondary);">&lt;${node.tag}&gt;</span> ${escapeHtml(node.text) || '<em>[No accessible text]</em>'}</div>
+              <div style="font-family:monospace; font-size:10px; color:var(--text-secondary); background:var(--bg-primary); padding:6px; border-radius:4px; border:1px solid var(--border-color); overflow-x:auto;">${escapeHtml(node.html)}</div>
+            </div>`;
+      }).join('')}
         </div>
       `;
-      } catch (e) {
-        container.innerHTML = '<div class="empty-state"><p>Error parsing Keyboard Flow.</p></div>';
-      }
-      return;
+    } catch (e) {
+      container.innerHTML = '<div class="empty-state"><p>Error parsing Keyboard Flow.</p></div>';
     }
+    return;
+  }
 
   // ==========================================
   // Standard Axe-Core Results Fallback
   // ==========================================
   var items = page.results ? (page.results[type] || []) : [];
-    if (severityFilter !== 'all' && type === 'violations') {
-      items = items.filter(function (item) { return item.impact === severityFilter; });
-    }
-
-    if (items.length === 0) {
-      container.innerHTML = '<div class="empty-state" style="padding:40px;"><i class="fas fa-' + (type === 'passes' ? 'check-circle' : 'search') + '"></i><h3>No ' + type + ' found</h3><p>' + (type === 'violations' ? 'Great! No violations at this severity level.' : '') + '</p></div>';
-      return;
-    }
-
-    container.innerHTML = items.map(function (item) {
-      return '<div class="violation-item">' +
-        '<div class="violation-header">' +
-        '<div class="violation-title">' + escapeHtml(item.help || item.description || '') + '</div>' +
-        (item.impact ? severityBadge(item.impact) : '<span class="badge badge-pass"><i class="fas fa-check"></i> Pass</span>') +
-        '</div>' +
-        '<div class="violation-description">' + escapeHtml(item.description || '') + '</div>' +
-        (item.nodes || []).slice(0, 5).map(function (node) {
-          return (node.html ? '<div class="violation-code">' + escapeHtml(node.html) + '</div>' : '') +
-            (node.failureSummary ? '<div class="violation-fix"><strong>How to fix:</strong> ' + escapeHtml(node.failureSummary) + '</div>' : '');
-        }).join('') +
-        '<div class="violation-meta">' +
-        '<span class="violation-tag">' + (item.id || '') + '</span>' +
-        (item.tags || []).filter(function (t) { return t.startsWith('wcag'); }).slice(0, 3).map(function (tag) {
-          return '<span class="violation-tag">' + tag + '</span>';
-        }).join('') +
-        (item.helpUrl ? '<a href="' + item.helpUrl + '" target="_blank" rel="noopener" style="font-size:12px;"><i class="fas fa-external-link-alt"></i> Learn more</a>' : '') +
-        '</div>' +
-        '</div>';
-    }).join('');
+  if (severityFilter !== 'all' && type === 'violations') {
+    items = items.filter(function (item) { return item.impact === severityFilter; });
   }
 
-  function escapeHtml(str) {
-    if (!str) return '';
-    var div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+  if (items.length === 0) {
+    container.innerHTML = '<div class="empty-state" style="padding:40px;"><i class="fas fa-' + (type === 'passes' ? 'check-circle' : 'search') + '"></i><h3>No ' + type + ' found</h3><p>' + (type === 'violations' ? 'Great! No violations at this severity level.' : '') + '</p></div>';
+    return;
   }
+
+  container.innerHTML = items.map(function (item) {
+    return '<div class="violation-item">' +
+      '<div class="violation-header">' +
+      '<div class="violation-title">' + escapeHtml(item.help || item.description || '') + '</div>' +
+      (item.impact ? severityBadge(item.impact) : '<span class="badge badge-pass"><i class="fas fa-check"></i> Pass</span>') +
+      '</div>' +
+      '<div class="violation-description">' + escapeHtml(item.description || '') + '</div>' +
+      (item.nodes || []).slice(0, 5).map(function (node) {
+        return (node.html ? '<div class="violation-code">' + escapeHtml(node.html) + '</div>' : '') +
+          (node.failureSummary ? '<div class="violation-fix"><strong>How to fix:</strong> ' + escapeHtml(node.failureSummary) + '</div>' : '');
+      }).join('') +
+      '<div class="violation-meta">' +
+      '<span class="violation-tag">' + (item.id || '') + '</span>' +
+      (item.tags || []).filter(function (t) { return t.startsWith('wcag'); }).slice(0, 3).map(function (tag) {
+        return '<span class="violation-tag">' + tag + '</span>';
+      }).join('') +
+      (item.helpUrl ? '<a href="' + item.helpUrl + '" target="_blank" rel="noopener" style="font-size:12px;"><i class="fas fa-external-link-alt"></i> Learn more</a>' : '') +
+      '</div>' +
+      '</div>';
+  }).join('');
+}
+
+function escapeHtml(str) {
+  if (!str) return '';
+  var div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
